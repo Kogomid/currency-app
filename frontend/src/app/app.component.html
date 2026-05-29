@@ -1,0 +1,66 @@
+<div class="container">
+  <header class="header">
+    <h1>Kursy Walut NBP</h1>
+    <p class="subtitle">Bieżące kursy walut z Narodowego Banku Polskiego</p>
+  </header>
+
+  <section class="controls">
+    <div class="button-group">
+      <button class="btn btn-primary" (click)="fetchFromNBP()">
+        <span class="icon"></span> Pobierz najnowsze z NBP
+      </button>
+      <button class="btn btn-secondary" (click)="loadAllRates()">
+        <span class="icon"></span> Załaduj wszystko z bazy
+      </button>
+    </div>
+
+    <div class="filter-group">
+      <label for="filterDate" class="filter-label">Filtruj po dacie:</label>
+      <div class="filter-inputs">
+        <input type="date" id="filterDate" class="date-input" [(ngModel)]="filterDate">
+        <button class="btn btn-accent" (click)="filterByDate()">
+          <span class="icon">🔎</span> Szukaj
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="results">
+    @if (filteredRates.length > 0) {
+      <div class="results-header">
+        <h2>Wyniki: {{ filteredRates.length }} walut</h2>
+      </div>
+      <div class="table-wrapper">
+        <table class="rates-table">
+          <thead>
+            <tr>
+              <th>Kod</th>
+              <th>Waluta</th>
+              <th class="text-right">Kurs</th>
+              <th>Data</th>
+              <th>Okres</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (rate of filteredRates; track rate.code) {
+              <tr class="rate-row">
+                <td class="code">{{ rate.code }}</td>
+                <td class="currency">{{ rate.currency }}</td>
+                <td class="rate text-right">{{ rate.rate | number:'1.2-4' }}</td>
+                <td class="date">{{ rate.effective_date }}</td>
+                <td class="period">
+                  <span class="badge">{{ getYear(rate.effective_date) }}/Q{{ getQuarter(rate.effective_date) }}</span>
+                  <span class="badge-month">{{ getMonth(rate.effective_date) }} m-c</span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="empty-state">
+        <p class="empty-text">Brak danych do wyświetlenia. Pobierz dane z NBP</p>
+      </div>
+    }
+  </section>
+</div>
