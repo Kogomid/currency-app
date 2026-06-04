@@ -1,56 +1,132 @@
 <div class="container">
   <header class="header">
-    <h1>Kursy Walut NBP</h1>
-    <p class="subtitle">Bieżące kursy walut z Narodowego Banku Polskiego</p>
+    <div class="header-content">
+      <h1>Kursy Walut NBP</h1>
+      <p class="subtitle">Bieżące kursy walut z Narodowego Banku Polskiego</p>
+    </div>
   </header>
 
-  <section class="controls">
-    <div class="button-group">
-      <button class="btn btn-primary" (click)="fetchFromNBP()">
-        <span class="icon"></span> Pobierz najnowsze z NBP
-      </button>
-      <button class="btn btn-secondary" (click)="loadAllRates()">
-        <span class="icon"></span> Załaduj wszystko z bazy
-      </button>
+  <!-- Loading Spinner -->
+  @if (isLoading) {
+    <div class="spinner-overlay">
+      <div class="spinner"></div>
+      <p>Ładowanie...</p>
     </div>
+  }
 
-    <div class="filter-group">
-      <label for="filterDate" class="filter-label">Filtruj po dacie:</label>
-      <div class="filter-inputs">
-        <input type="date" id="filterDate" class="date-input" [(ngModel)]="filterDate">
-        <button class="btn btn-accent" (click)="filterByDate()">
-          <span class="icon">🔎</span> Szukaj
+  <!-- Messages -->
+  @if (successMessage) {
+    <div class="alert alert-success">{{ successMessage }}</div>
+  }
+  @if (errorMessage) {
+    <div class="alert alert-error">{{ errorMessage }}</div>
+  }
+
+  <!-- Main Controls Section -->
+  <section class="controls">
+    <!-- Action Buttons -->
+    <div class="control-section">
+      <h3 class="section-title">Pobierz dane</h3>
+      <div class="button-group">
+        <button class="btn btn-primary" (click)="fetchFromNBP()" [disabled]="isLoading">
+          Pobierz z NBP
+        </button>
+        <button class="btn btn-secondary" (click)="loadAllRates()" [disabled]="isLoading">
+          Załaduj bazę
         </button>
       </div>
     </div>
+
+    <!-- Date Filter -->
+    <div class="control-section">
+      <h3 class="section-title">Filtruj po dacie</h3>
+      <div class="filter-group">
+        <input type="date" class="date-input" [(ngModel)]="filterDate" [disabled]="isLoading">
+        <button class="btn btn-accent" (click)="filterByDate()" [disabled]="isLoading">
+          Szukaj
+        </button>
+      </div>
+    </div>
+
+    <!-- Period Filter -->
+    <div class="control-section">
+      <h3 class="section-title">Filtruj po okresie</h3>
+      <div class="period-filters">
+        <select class="filter-select" [(ngModel)]="selectedYear" (change)="filterByPeriod()">
+          <option [value]="null">Wszystkie lata</option>
+          @for (year of availableYears; track year) {
+            <option [value]="year">{{ year }}</option>
+          }
+        </select>
+        <select class="filter-select" [(ngModel)]="selectedQuarter" (change)="filterByPeriod()" [disabled]="!selectedYear">
+          <option [value]="null">Wszystkie kwartały</option>
+          @for (q of [1,2,3,4]; track q) {
+            <option [value]="q">Kwartał {{ q }}</option>
+          }
+        </select>
+        <select class="filter-select" [(ngModel)]="selectedMonth" (change)="filterByPeriod()" [disabled]="!selectedYear">
+          <option [value]="null">Wszystkie miesiące</option>
+          @for (m of [1,2,3,4,5,6,7,8,9,10,11,12]; track m) {
+            <option [value]="m">{{ getMonthName(m) }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <!-- Clear Filters -->
+    @if (filterDate || selectedYear || selectedQuarter || selectedMonth) {
+      <div class="control-section">
+        <button class="btn btn-clear" (click)="clearFilters()">
+          <span class="icon">✕</span> Wyczyść filtry
+        </button>
+      </div>
+    }
   </section>
 
+  <!-- Results Section -->
   <section class="results">
     @if (filteredRates.length > 0) {
       <div class="results-header">
-        <h2>Wyniki: {{ filteredRates.length }} walut</h2>
+        <div class="results-stats">
+          <h2>Wyniki</h2>
+          <span class="stats-badge">{{ filteredRates.length }} walut</span>
+        </div>
       </div>
+
       <div class="table-wrapper">
         <table class="rates-table">
           <thead>
             <tr>
-              <th>Kod</th>
-              <th>Waluta</th>
-              <th class="text-right">Kurs</th>
-              <th>Data</th>
+              <th (click)="sortBy('code')" class="sortable">
+                Kod {{ getSortIcon('code') }}
+              </th>
+              <th (click)="sortBy('currency')" class="sortable">
+                Waluta {{ getSortIcon('currency') }}
+              </th>
+              <th (click)="sortBy('rate')" class="sortable text-right">
+                Kurs {{ getSortIcon('rate') }}
+              </th>
+              <th (click)="sortBy('effective_date')" class="sortable">
+                Data {{ getSortIcon('effective_date') }}
+              </th>
               <th>Okres</th>
             </tr>
           </thead>
           <tbody>
-            @for (rate of filteredRates; track rate.code) {
+            @for (rate of filteredRates; track rate.id) {
               <tr class="rate-row">
-                <td class="code">{{ rate.code }}</td>
+                <td class="code">
+                  <span class="code-badge">{{ rate.code }}</span>
+                </td>
                 <td class="currency">{{ rate.currency }}</td>
-                <td class="rate text-right">{{ rate.rate | number:'1.2-4' }}</td>
+                <td class="rate text-right">
+                  <span class="rate-value">{{ rate.rate | number:'1.2-4' }}</span>
+                </td>
                 <td class="date">{{ rate.effective_date }}</td>
                 <td class="period">
-                  <span class="badge">{{ getYear(rate.effective_date) }}/Q{{ getQuarter(rate.effective_date) }}</span>
-                  <span class="badge-month">{{ getMonth(rate.effective_date) }} m-c</span>
+                  <span class="badge badge-year">{{ getYear(rate.effective_date) }}</span>
+                  <span class="badge badge-quarter">Q{{ getQuarter(rate.effective_date) }}</span>
+                  <span class="badge badge-month">{{ getMonth(rate.effective_date) }} m-c</span>
                 </td>
               </tr>
             }
@@ -59,7 +135,8 @@
       </div>
     } @else {
       <div class="empty-state">
-        <p class="empty-text">Brak danych do wyświetlenia. Pobierz dane z NBP</p>
+        <p class="empty-text">Brak danych do wyświetlenia</p>
+        <p class="empty-subtext">Kliknij "Pobierz z NBP" aby załadować dane</p>
       </div>
     }
   </section>
